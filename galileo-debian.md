@@ -426,9 +426,15 @@ ldconfig: /lib/libncurses.so.5 is not a symbolic link
 ```
 
 ### 検証不足
-Arduino IDEでコンパイル、Arduino IDEでインストール、そして実機で動作することを確認したのは、以下の2サンプルです。
+Arduino IDEでコンパイル、Arduino IDEでインストール、そして実機で動作することを確認したのは、以下のサンプルです。
 
 * Basics - Blink
+* Basics - Fade
+* Basics - AnalogReadSerial
+* Basics - DigitalReadSerial
+* EEPROM - eeprom_clear
+* EEPROM - eeprom_read
+* EEPROM - eeprom_write
 * LiquidCrystal - HelloWorld
 
 その他にはPWMの動作を確認しました。
