@@ -338,6 +338,42 @@ $ sudo sed -i -e "s/127.0.0.1\tlocalhost/127.0.0.1\tlocalhost clanton/" /etc/hos
 ```
 
 
+### NTPDの設定
+Galileoの時刻を自動修正してくれるように、NTPデーモンを立てます。
+以下のコマンドを実行してntpをインストールしてください。
+
+```
+$ sudo aptitude -y install ntpd
+```
+
+次に設定を修正してNICTから時刻をあわせるようにします。
+
+以下のコマンドで設定ファイルを開いてください。
+
+```
+% sudo nano /etc/ntp.conf
+```
+
+そしてserverの記述を以下のようにコメントアウトします
+
+```
+#server 0.debian.pool.ntp.org iburst
+#server 1.debian.pool.ntp.org iburst
+#server 2.debian.pool.ntp.org iburst
+#server 3.debian.pool.ntp.org iburst
+```
+
+そしてその下に以下を追加してください。
+
+```
+pool ntp.nict.jp iburst
+```
+
+このiburstがないと起動直後の時計が大きく狂うようです。
+
+編集が完了したらCtrl+O,Ctrl+Xで保存して抜けてください。nanoは画面下にコマンドが出てるので親切ですね。
+
+
 ### イメージのアンマウント
 これですべての設定は完了です。
 以下のコマンドで一番上まで抜けて、イメージをアンマウントしてください。
@@ -374,6 +410,13 @@ SDカードをGalileoにさして、電源を入れてください。
 2分ほどでシステムが立ち上がり、ネットワークが立ち上がればSSHが一緒に動き出すはずです。
 
 ただしIPアドレスはDHCPで取ってくるようになっているので、シリアルケーブルを使ってコンソールにアクセスして確認して下さい。
+
+### 時刻設定
+起動後に以下のコマンドを実行して時刻設定してください。
+
+```
+$ sudo ntpdate ntp.nict.jp
+```
 
 
 
@@ -424,6 +467,14 @@ ldconfig: /lib/libcap.so.2 is not a symbolic link
 
 ldconfig: /lib/libncurses.so.5 is not a symbolic link
 ```
+
+### 時刻設定の保持
+元イメージの ```/etc/init.d/save-rtc.sh``` で時刻を保存、 ``` /etc/init.d/bootmisc.sh ``` で起動時に時刻を読み込んでいるようです。
+
+インストールしたdebianイメージにはこのスクリプトを移植していないので、時刻設定の保持はうまくいかないはずですが………私の環境では再起動後も時刻設定が初期化されていませんでした。
+
+この理由がまだわかっていません。
+
 
 ### 検証不足
 Arduino IDEでコンパイル、Arduino IDEでインストール、そして実機で動作することを確認したのは、以下の2サンプルです。
