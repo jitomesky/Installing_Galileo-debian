@@ -85,7 +85,6 @@ $ cd
 $ sudo cp -avr image/opt/cln mnt-loop/opt
 $ sudo sh -c "echo 'grst:5:respawn:/opt/cln/galileo/galileo_sketch_reset -v' >> mnt-loop/etc/inittab"
 $ sudo sh -c "echo 'clld:5:respawn:/etc/init.d/clloader.sh' >> mnt-loop/etc/inittab"
-$ sudo sh -c "cat image/etc/modules-load.d/auto.conf >> mnt-loop/etc/modules"
 $ sudo sed -i -e "s/id:2:initdefault:/id:5:initdefault:/" mnt-loop/etc/inittab
 ```
 
