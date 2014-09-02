@@ -1,4 +1,4 @@
-# How to Install Debian(wheezy) on Galileo
+# How to Install Debian(wheezy) for Intel Galileo Gen2
 
 ## 概要
 Intel Galileoに、Arduino機能を保ったままDebian（wheezy）をインストールする方法の解説です。
@@ -23,9 +23,8 @@ GalileoにDebianをインストールする方法は、主に以下のページ�
 ```bash
 $ mkdir ~/Downloads
 $ cd ~/Downloads
-$ wget http://downloadmirror.intel.com/23171/eng/LINUX_IMAGE_FOR_SD_Intel_Galileo_v0.7.5.7z
-$ sudo apt-get -y install p7zip-full
-$ 7z x LINUX_IMAGE_FOR_SD_Intel_Galileo_v0.7.5.7z
+$ wget http://downloadmirror.intel.com/24000/eng/LINUX_IMAGE_FOR_SD_Intel_Galileo_v1.0.2.zip
+$ unzip LINUX_IMAGE_FOR_SD_Intel_Galileo_v1.0.2.zip
 ```
 
 
@@ -39,7 +38,7 @@ $ mkdir galileo-debian
 $ cd gaileo-debian
 $ mkdir mnt-loop sdcard image
 $ dd if=/dev/zero of=loopback.img bs=1G count=3
-$ mkfs.ext3 loopback.img
+$ /sbin/mkfs.ext3 loopback.img
 ```
 ここで次のように聞かれるので、yを押してください。
 ```
@@ -53,7 +52,7 @@ Proceed anyway? (y,n)
 $ sudo mount -o loop loopback.img mnt-loop
 $ sudo aptitude -y install debootstrap
 $ sudo debootstrap --arch i386 wheezy ./mnt-loop http://http.debian.net/debian/ 
-$ sudo mount -o loop ~/Downloads/LINUX_IMAGE_FOR_SD_Intel_Galileo_v0.7.5/image-full-clanton.ext3 image
+$ sudo mount -o loop ~/Downloads/SDCard/image-full-galileo-clanton.ext3 image
 $ sudo cp -r image/lib/modules mnt-loop/lib
 $ cd mnt-loop
 $ sudo mkdir media sketch
@@ -62,7 +61,7 @@ $ cd media
 $ sudo mkdir card cf hdd mmc1 net ram realroot union
 $ cd ../dev
 $ sudo mkdir mtdblock0 mtd0 
-$ cd ../..
+$ cd ../../
 ```
 
 ### initスクリプトの追加と修正
@@ -70,21 +69,18 @@ $ cd ../..
 以下のコマンドを実行してください。
 
 ```
-$ sudo cp image/etc/init.d/clloader.sh mnt-loop/etc/init.d
-$ sudo cp image/etc/init.d/start-clloader.sh mnt-loop/etc/init.d/
-$ sudo cp image/etc/init.d/sysfs* mnt-loop/etc/init.d/
-$ cd mnt-loop/etc/rcS.d
+$ cd image/etc/init.d/
+$ sudo cp quark-init.sh save-rtc.sh galileod.sh sysfs.sh sysfs_devtmpfs.sh ../../../mnt-loop/etc/init.d/
+$ cd ../../../mnt-loop/etc/rcS.d
 $ sudo ln -s ../init.d/sysfs.sh S02sysfs.sh
 $ sudo ln -s ../init.d/sysfs_devtmpfs.sh S02sysfs_devtmpfs.sh
-$ cd
+$ cd ~/gaileo-debian
 ```
 
 次に ``` /opt/cln/galileo ``` 以下をコピーし、inittabを編集してランレベルの設定などを行います。
 
 ```
 $ sudo cp -avr image/opt/cln mnt-loop/opt
-$ sudo sh -c "echo 'grst:5:respawn:/opt/cln/galileo/galileo_sketch_reset -v' >> mnt-loop/etc/inittab"
-$ sudo sh -c "echo 'clld:5:respawn:/etc/init.d/clloader.sh' >> mnt-loop/etc/inittab"
 $ sudo sed -i -e "s/id:2:initdefault:/id:5:initdefault:/" mnt-loop/etc/inittab
 ```
 
@@ -93,7 +89,8 @@ $ sudo sed -i -e "s/id:2:initdefault:/id:5:initdefault:/" mnt-loop/etc/inittab
 以下のコマンドを実行してください。
 
 ```
-$ sudo sh -c "cat image/etc/modules-load.d/auto.conf >> mnt-loop/etc/modules"
+$ sudo sh -c "cat image/etc/modules-load.d/bsp.conf >> mnt-loop/etc/modules"
+$ sudo cp -R image/etc/modules-load.quark mnt-loop/etc/
 ```
 
 ### ttyGS0の復活
@@ -110,7 +107,6 @@ $ sudo sh -c "echo 'KERNEL=="ttyGS*",  NAME="%k", GROUP="uucp", MODE="0666"' > m
 まずは以下のコマンドを実行してください。
 
 ```
-$ sudo umount image
 $ sudo mount -t proc proc mnt-loop/proc
 $ sudo mount -t sysfs sysfs mnt-loop/sys
 $ sudo chroot mnt-loop /bin/bash
@@ -118,13 +114,20 @@ $ sudo chroot mnt-loop /bin/bash
 
 これでGalileo用Debianイメージがマウントされ、そこに実行環境が移されました。
 
+### 初期化スクリプトの有効
+
+```
+$ update-rc.d quark-init.sh defaults
+$ update-rc.d galileod.sh defaults
+```
+
 ### usleepコマンドの置き換え
 clloader.shのusleepコマンドはdebianにはないので、コンパチなパッケージを入れて置き換えます。
 以下のコマンドを実行してください。
 
 ```
 # aptitude -y install sleepenh
-# sed -i -e "s/usleep 200000/sleepenh 0.2/" /etc/init.d/clloader.sh
+# sed -i -e "s/usleep 200000/sleepenh 0.2/" //opt/cln/galileo/launcher.sh
 ```
 
 ### killallコマンドの追加
@@ -180,7 +183,7 @@ T1:2345:respawn:/sbin/getty -L ttyS1 115200 vt100
 # groupadd -g 35 sshd
 # useradd -u 35 -g 35 -c sshd -d / sshd
 # apt-get update
-# apt-get -y install screen build-essential zlib1g-dev libssl-dev 
+# apt-get -y install tmux build-essential zlib1g-dev libssl-dev
 # cd /root
 # wget http://www.mirrorservice.org/pub/OpenBSD/OpenSSH/portable/openssh-5.9p1.tar.gz
 # tar zxvf openssh-5.9p1.tar.gz
@@ -250,14 +253,16 @@ SSHと同様にGitもダウングレードしたほうが良いとのことな�
 
 ```
 # exit
-$ wget http://downloadmirror.intel.com/23171/eng/Board_Support_Package_Sources_for_Intel_Quark_v0.7.5_full_yocto_archive.tar.gz
-
-$ tar zxvf Board*
-$ sudo cp GPL_COMPLIANCE/source/galileo-target-0.1-r0/galileo-target-0.1-r0-prepatch.tar.gz mnt-loop/root/
+$ wget http://downloadmirror.intel.com/24000/eng/BSP_Galileo.src.zip.001
+$ wget http://downloadmirror.intel.com/24000/eng/BSP_Galileo.src.zip.002
+$ cat BSP_Galileo.src.zip.001 BSP_Galileo.src.zip.002 > BSP_Galileo.src.zip
+$ unzip BSP_Galileo.src.zip
+$ sudo cp GPL_COMPLIANCE/galileo-target-0.1-r0/galileo-target-0.1-r0-prepatch.tar.gz mnt-loop/root/
 $ sudo chroot mnt-loop /bin/bash
 # cd /root
 # tar zxvf galileo-target-0.1-r0-prepatch.tar.gz
-# cd galileo*c
+# cd galileo*
+# apt-get -y install rsync
 # make
 # make install
 # cp clloader galileo_sketch_reset /opt/cln/galileo/
@@ -292,10 +297,7 @@ $ sudo chroot mnt-loop /bin/bash
 # useradd galileo -m -s /bin/bash
 # passwd galileo
 # usermod -aG sudo galileo
-# mkdir /home/galileo
-# chown galileo /home/galileo
 # su galileo
-$ bash
 ```
 
 なお、ここで作ったユーザーはsudoerに追加され、sudoが使用できます。
@@ -342,7 +344,7 @@ Galileoの時刻を自動修正してくれるように、NTPデーモンを立�
 以下のコマンドを実行してntpをインストールしてください。
 
 ```
-$ sudo aptitude -y install ntpd
+$ sudo aptitude -y install ntpdate openntpd
 ```
 
 次に設定を修正してNICTから時刻をあわせるようにします。
@@ -350,7 +352,7 @@ $ sudo aptitude -y install ntpd
 以下のコマンドで設定ファイルを開いてください。
 
 ```
-% sudo nano /etc/ntp.conf
+$ sudo nano /etc/openntpd/ntpd.conf
 ```
 
 そしてserverの記述を以下のようにコメントアウトします
@@ -365,10 +367,8 @@ $ sudo aptitude -y install ntpd
 そしてその下に以下を追加してください。
 
 ```
-pool ntp.nict.jp iburst
+servers ntp.nict.jp
 ```
-
-このiburstがないと起動直後の時計が大きく狂うようです。
 
 編集が完了したらCtrl+O,Ctrl+Xで保存して抜けてください。nanoは画面下にコマンドが出てるので親切ですね。
 
@@ -384,6 +384,7 @@ $ exit
 $ sudo umount mnt-loop/proc
 $ sudo umount mnt-loop/sys
 $ sudo umount mnt-loop
+$ sudo umount image
 ```
 
 ### SDカードへのインストール
