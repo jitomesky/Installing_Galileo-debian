@@ -117,8 +117,8 @@ $ sudo chroot mnt-loop /bin/bash
 ### 初期化スクリプトの有効
 
 ```
-$ update-rc.d quark-init.sh defaults
-$ update-rc.d galileod.sh defaults
+# update-rc.d quark-init.sh defaults
+# update-rc.d galileod.sh defaults
 ```
 
 ### usleepコマンドの置き換え
